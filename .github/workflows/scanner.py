@@ -143,47 +143,29 @@ def is_market_open():
     return (datetime.now().weekday() < 5) and (dtime(9, 15) <= now <= dtime(15, 30))
 
 def run_scanner():
-    if not is_market_open():
-        os.system('cls' if os.name == 'nt' else 'clear')
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] 💤 Market Closed. Scanner resumes at 09:15 AM IST.")
-        return
-
-    results = []
-    print(f"\n🚀 SCANNING NIFTY 50...")
-    
-    for i, ticker in enumerate(NIFTY_50_TICKERS, 1):
-        try:
-            sys.stdout.write(f"\r[{i}/50] Analyzing {ticker}...       ")
-            sys.stdout.flush()
-            oracle = GrandOracle(ticker)
-            report = oracle.analyze()
-            if report: results.append(report)
-        except: continue
-
-    os.system('cls' if os.name == 'nt' else 'clear')
-    print("="*200)
-    print(f"📊 LIVE PORTFOLIO ADVISOR | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("="*200)
+    # ... your logic to get 'results' ...
 
     if results:
         final_df = pd.DataFrame(results)
-        rank = {"★ BUY ★": 0, "HOLD": 1, "EXIT": 2}
-        final_df['Sort'] = final_df['Call'].map(rank)
-        # Columns re-ordered to include AI_View before News
-        cols = ["Ticker", "CMP", "Call", "Target", "SL", "AI_View", "News", "Headline", "P/E"]
-        print(final_df.sort_values('Sort')[cols].to_string(index=False))
-    else:
-        print("No significant trends detected.")
-    print("="*200)
+        
+        # Create a single alert string to avoid multiple async calls
+        alerts = []
+        for _, row in final_df.iterrows():
+            if "★" in row['Call'] or row['Call'] == "EXIT":
+                msg = f"📢 *{row['Ticker']}*: {row['Call']} @ {row['CMP']}"
+                alerts.append(msg)
+        
+        if alerts:
+            full_message = "\n".join(alerts)
+            # Run the message sender ONCE
+            asyncio.run(send_telegram_msg(full_message))
+        
+        print(final_df.to_string(index=False))
 
 if __name__ == "__main__":
-    while True:
-if __name__ == "__main__":
-    try:
-        run_scanner()
-    except Exception as e:
-        print(f"Error: {e}")
-
-  import os
+    # Ensure the script actually runs
+    run_scanner()
+    
+    import os
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
