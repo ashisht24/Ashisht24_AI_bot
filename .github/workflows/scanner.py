@@ -1,3 +1,6 @@
+import os
+os.environ['CMDSTANPY_LOGGING'] = '40' # Suppress heavy logging
+
 import sys
 import yfinance as yf
 import pandas as pd
