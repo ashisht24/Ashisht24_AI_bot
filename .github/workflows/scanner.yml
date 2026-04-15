@@ -17,19 +17,16 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # Updated from v3 to v4
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git
+          python-version: '3.12' # MUST BE 3.12
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
+          # We install the "classic" development version directly
+          pip install git+https://github.com/twopirllc/pandas-ta.git@development
           pip install -r requirements.txt
