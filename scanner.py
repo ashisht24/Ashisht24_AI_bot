@@ -24,6 +24,7 @@ except:
     pass
 # --------------------------------
 
+# 1. Setup & Silencing Logs
 warnings.filterwarnings("ignore")
 logging.getLogger('prophet').setLevel(logging.ERROR)
 logging.getLogger('cmdstanpy').disabled = True
@@ -53,20 +54,18 @@ class GrandOracle:
         """Fetches sentiment and the actual headline title"""
         try:
             ticker_clean = self.ticker_symbol.split('.')[0]
-            # Constructing Google News RSS query for the ticker
             url = f"https://news.google.com/rss/search?q={ticker_clean}+stock+india&hl=en-IN&gl=IN&ceid=IN:en"
             headers = {'User-Agent': 'Mozilla/5.0'}
             req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req) as response:
                 content = response.read().decode('utf-8')
-                # Extracting titles (The first title in RSS is the feed name, so we skip it)
                 titles = re.findall("<title>(.*?)</title>", content)[1:6]
             
             if not titles: 
                 return 0.0, "No major news"
             
-            # Helper to remove the source name (e.g., "Headline - The Economic Times" becomes "Headline")
             def clean_title(t):
+                # Removes source name at the end (e.g. " - Economic Times")
                 return re.sub(r'\s+-\s+[^-]+$', '', t).strip()
 
             actual_headline = clean_title(titles[0])
@@ -123,55 +122,4 @@ class GrandOracle:
         except: return None
 
 async def send_telegram_msg(message):
-    token = os.getenv("TELEGRAM_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    if token and chat_id:
-        bot = telegram.Bot(token=token)
-        async with bot:
-            await bot.send_message(text=message, chat_id=chat_id, parse_mode='Markdown')
-
-def run_scanner():
-    results = []
-    print(f"🚀 SCANNING NIFTY 50...")
-    for ticker in NIFTY_50_TICKERS:
-        try:
-            oracle = GrandOracle(ticker)
-            report = oracle.analyze()
-            if report: results.append(report)
-        except: continue
-
-    if results:
-        final_df = pd.DataFrame(results)
-        rank = {"★ BUY ★": 0, "HOLD": 1, "EXIT": 2}
-        final_df['Sort'] = final_df['Call'].map(rank)
-        sorted_results = final_df.sort_values('Sort').to_dict('records')
-
-        cards = []
-        for row in sorted_results:
-            card = (
-                f"*{row['Call']} | {row['Ticker']}*\n"
-                f"💰 **CMP:** ₹{row['CMP']}\n"
-                f"🎯 **Target:** ₹{row['Target']}\n"
-            )
-            
-            if row['Call'] == "EXIT":
-                card += f"💵 **Take_Profit:** ₹{row['CMP']} (Book Now!)\n"
-            else:
-                card += f"🛡️ **SL:** ₹{row['SL']}\n"
-
-            card += (
-                f"💡 **AI View:** {row['AI_View']}\n"
-                f"📢 **News:** {row['News']}\n"
-                f"📰 **Headline:** {row['Headline']}"
-            )
-            cards.append(card)
-
-        footer = f"\n\nScan completed at {datetime.now().strftime('%H:%M:%S')} PM IST.\nNext scan in 30 minutes..."
-        full_message = "\n\n---\n\n".join(cards) + footer
-        
-        asyncio.run(send_telegram_msg(full_message))
-    else:
-        print("No trades triggered the Oracle logic.")
-
-if __name__ == "__main__":
-    run_scanner()
+    token =
