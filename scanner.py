@@ -75,13 +75,10 @@ class GrandOracle:
             df = pd.concat([df, bb, macd], axis=1)
             
             latest = df.iloc[-1]
-            ltp = float(latest['Close'])
-            rsi = float(latest['RSI'])
+            ltp, rsi = float(latest['Close']), float(latest['RSI'])
             macd_h = float(latest.filter(like='MACDh').iloc[0])
-            vol_now = float(latest['Volume'])
-            vol_avg = df['Volume'].tail(20).mean()
-            l_band = float(latest.filter(like='BBL').iloc[0])
-            u_band = float(latest.filter(like='BBU').iloc[0])
+            vol_now, vol_avg = float(latest['Volume']), df['Volume'].tail(20).mean()
+            l_band, u_band = float(latest.filter(like='BBL').iloc[0]), float(latest.filter(like='BBU').iloc[0])
 
             df_p = df.reset_index()[['Date', 'Close']].rename(columns={'Date':'ds', 'Close':'y'})
             df_p['ds'] = df_p['ds'].dt.tz_localize(None)
@@ -93,26 +90,25 @@ class GrandOracle:
             sentiment, headline = self.get_news_data()
             news_label = "POSITIVE" if sentiment > 0.05 else ("NEGATIVE" if sentiment < -0.05 else "NEUTRAL")
             pe = self.info.get('forwardPE', 100)
-            fundamental_ok = pe < 85
+            debt_eq = self.info.get('debtToEquity', 0) / 100
+            fundamental_ok = pe < 85 and debt_eq < 2.5
 
             call, target, sl = "HOLD", "—", "—"
             tech_ok = (rsi < 60 and macd_h > 0 and vol_now > vol_avg * 0.8)
 
             if ai_target > (ltp * 1.02) and (ltp <= (l_band * 1.02) or tech_ok) and fundamental_ok:
-                call = "★ BUY ★"
-                target = round(max(ai_target, u_band), 2)
-                sl = round(ltp * 0.96, 2)
+                call, target, sl = "★ BUY ★", round(max(ai_target, u_band), 2), round(ltp * 0.96, 2)
             elif ai_target < (ltp * 0.98) and (rsi > 68 or news_label == "NEGATIVE"):
-                call = "EXIT"
-                target = round(min(ai_target, l_band), 2)
-                sl = "—"
+                call, target, sl = "EXIT", round(min(ai_target, l_band), 2), "—"
             else:
-                return None
+                if ai_target > ltp:
+                    call, target, sl = "HOLD", round(max(ai_target, u_band), 2), round(ltp * 0.975, 2)
+                else: return None
 
             return {
                 "Ticker": self.ticker_symbol.replace(".NS",""), "CMP": round(ltp, 2), 
                 "Call": call, "Target": target, "SL": sl, "AI_View": "BULLISH" if ai_target > ltp else "BEARISH",
-                "News": news_label, "Headline": headline
+                "News": news_label, "Headline": headline, "P/E": round(pe, 1)
             }
         except: return None
 
@@ -122,34 +118,36 @@ async def send_telegram_msg(message):
     if token and chat_id:
         bot = telegram.Bot(token=token)
         async with bot:
+            # Using MarkdownV2 for strict code formatting
             await bot.send_message(text=message, chat_id=chat_id, parse_mode='Markdown')
 
 def run_scanner():
-    print(f"Starting Scan: {datetime.now()}")
-    results = [] 
-    
+    results = []
+    print(f"🚀 SCANNING NIFTY 50...")
     for ticker in NIFTY_50_TICKERS:
         try:
-            print(f"Analyzing {ticker}...")
             oracle = GrandOracle(ticker)
-            analysis = oracle.analyze()
-            if analysis:
-                results.append(analysis)
-        except Exception as e:
-            print(f"Error analyzing {ticker}: {e}")
+            report = oracle.analyze()
+            if report: results.append(report)
+        except: continue
 
     if results:
         final_df = pd.DataFrame(results)
-        alerts = []
-        for _, row in final_df.iterrows():
-            msg = f"📢 *{row['Ticker']}*: {row['Call']} @ {row['CMP']} | Tgt: {row['Target']} | AI: {row['AI_View']}"
-            alerts.append(msg)
+        rank = {"★ BUY ★": 0, "HOLD": 1, "EXIT": 2}
+        final_df['Sort'] = final_df['Call'].map(rank)
+        cols = ["Ticker", "CMP", "Call", "Target", "SL", "AI_View", "News", "P/E"]
         
-        full_message = "🚀 **Nifty 50 Analysis Report** 🚀\n\n" + "\n".join(alerts)
-        asyncio.run(send_telegram_msg(full_message))
-        print(final_df.to_string(index=False))
+        # 1. Create the terminal-style table string
+        table_output = final_df.sort_values('Sort')[cols].to_string(index=False)
+        
+        # 2. Wrap it in triple backticks for Telegram (Monospace)
+        header = f"📊 *LIVE PORTFOLIO ADVISOR* | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        full_msg = f"{header}\n```{table_output}```"
+        
+        asyncio.run(send_telegram_msg(full_msg))
+        print(table_output)
     else:
-        print("No buy/exit signals found in this scan.")
+        print("No significant trends detected.")
 
 if __name__ == "__main__":
     run_scanner()
