@@ -13,7 +13,6 @@ import warnings
 import logging
 import urllib.request
 import re
-import numpy as np
 import asyncio
 import telegram
 
@@ -51,18 +50,29 @@ class GrandOracle:
         self.info = self.stock.info
 
     def get_news_data(self):
+        """Fetches sentiment and the actual headline title"""
         try:
             ticker_clean = self.ticker_symbol.split('.')[0]
+            # Constructing Google News RSS query for the ticker
             url = f"https://news.google.com/rss/search?q={ticker_clean}+stock+india&hl=en-IN&gl=IN&ceid=IN:en"
             headers = {'User-Agent': 'Mozilla/5.0'}
             req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req) as response:
                 content = response.read().decode('utf-8')
-                headlines = re.findall("<title>(.*?)</title>", content)[1:6]
-            if not headlines: return 0.0, "No major news"
-            def clean_h(h): return re.sub(r'\s+-\s+[^-]+$', '', h).strip()
-            sentiment = sum([TextBlob(h).sentiment.polarity for h in headlines]) / len(headlines)
-            return (sentiment, clean_h(headlines[0])) if abs(sentiment) > 0.05 else (sentiment, "No major news")
+                # Extracting titles (The first title in RSS is the feed name, so we skip it)
+                titles = re.findall("<title>(.*?)</title>", content)[1:6]
+            
+            if not titles: 
+                return 0.0, "No major news"
+            
+            # Helper to remove the source name (e.g., "Headline - The Economic Times" becomes "Headline")
+            def clean_title(t):
+                return re.sub(r'\s+-\s+[^-]+$', '', t).strip()
+
+            actual_headline = clean_title(titles[0])
+            sentiment = sum([TextBlob(t).sentiment.polarity for t in titles]) / len(titles)
+            
+            return sentiment, actual_headline
         except:
             return 0.0, "No major news"
 
@@ -138,14 +148,12 @@ def run_scanner():
 
         cards = []
         for row in sorted_results:
-            # Build the card matching your image exactly
             card = (
-                f"{row['Call']} | *{row['Ticker']}*\n"
+                f"*{row['Call']} | {row['Ticker']}*\n"
                 f"💰 **CMP:** ₹{row['CMP']}\n"
                 f"🎯 **Target:** ₹{row['Target']}\n"
             )
             
-            # Use 'Take_Profit' label for EXIT calls as per your image
             if row['Call'] == "EXIT":
                 card += f"💵 **Take_Profit:** ₹{row['CMP']} (Book Now!)\n"
             else:
@@ -154,18 +162,16 @@ def run_scanner():
             card += (
                 f"💡 **AI View:** {row['AI_View']}\n"
                 f"📢 **News:** {row['News']}\n"
-                f"📰 **Headline:** {row['Headline']}\n"
+                f"📰 **Headline:** {row['Headline']}"
             )
             cards.append(card)
 
-        # Final footer with timestamp
-        footer = f"\nScan completed at {datetime.now().strftime('%H:%M:%S')} PM IST.\nNext scan in 30 minutes..."
-        full_message = "\n\n".join(cards) + footer
+        footer = f"\n\nScan completed at {datetime.now().strftime('%H:%M:%S')} PM IST.\nNext scan in 30 minutes..."
+        full_message = "\n\n---\n\n".join(cards) + footer
         
         asyncio.run(send_telegram_msg(full_message))
-        print("Report sent to Telegram.")
     else:
-        print("No significant trends detected.")
+        print("No trades triggered the Oracle logic.")
 
 if __name__ == "__main__":
     run_scanner()
