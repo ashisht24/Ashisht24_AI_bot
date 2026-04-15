@@ -124,3 +124,56 @@ class GrandOracle:
 async def send_telegram_msg(message):
     token = os.getenv("TELEGRAM_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if token and chat_id:
+        bot = telegram.Bot(token=token)
+        async with bot:
+            # HTML parsing is used here to prevent crashes from symbols in headlines
+            await bot.send_message(text=message, chat_id=chat_id, parse_mode='HTML')
+
+def run_scanner():
+    results = []
+    print(f"🚀 SCANNING NIFTY 50...")
+    for ticker in NIFTY_50_TICKERS:
+        try:
+            oracle = GrandOracle(ticker)
+            report = oracle.analyze()
+            if report: results.append(report)
+        except: continue
+
+    if results:
+        final_df = pd.DataFrame(results)
+        rank = {"★ BUY ★": 0, "HOLD": 1, "EXIT": 2}
+        final_df['Sort'] = final_df['Call'].map(rank)
+        sorted_results = final_df.sort_values('Sort').to_dict('records')
+
+        cards = []
+        for row in sorted_results:
+            # Building HTML cards for the Telegram Bot
+            card = (
+                f"<b>{row['Call']} | {row['Ticker']}</b>\n"
+                f"💰 <b>CMP:</b> ₹{row['CMP']}\n"
+                f"🎯 <b>Target:</b> ₹{row['Target']}\n"
+            )
+            
+            if row['Call'] == "EXIT":
+                card += f"💵 <b>Take_Profit:</b> ₹{row['CMP']} (Book Now!)\n"
+            else:
+                card += f"🛡️ <b>SL:</b> ₹{row['SL']}\n"
+
+            card += (
+                f"💡 <b>AI View:</b> {row['AI_View']}\n"
+                f"📢 <b>News:</b> {row['News']}\n"
+                f"📰 <b>Headline:</b> {row['Headline']}"
+            )
+            cards.append(card)
+
+        footer = f"\n\nScan completed at {datetime.now().strftime('%H:%M:%S')} PM IST.\nNext scan in 30 minutes..."
+        full_message = "\n\n----------\n\n".join(cards) + footer
+        
+        asyncio.run(send_telegram_msg(full_message))
+        print("Success: Telegram report sent.")
+    else:
+        print("No active signals found in this scan.")
+
+if __name__ == "__main__":
+    run_scanner()
