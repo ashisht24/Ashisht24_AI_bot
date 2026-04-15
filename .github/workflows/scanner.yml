@@ -20,9 +20,9 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          # Installing the stable 2026-compatible version directly from PyPI
-          pip install pandas-ta==0.3.14b0 
-          # Install the rest
+          # Download and install the "classic" version directly from the source zip
+          pip install https://github.com/twopirllc/pandas-ta/archive/refs/heads/development.zip
+          # Install the other stable libraries
           pip install yfinance pandas prophet textblob python-telegram-bot
 
       - name: Run Scanner
