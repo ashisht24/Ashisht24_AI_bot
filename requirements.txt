@@ -1,6 +1,6 @@
 yfinance
-pandas>=2.0.0
-pandas-ta
+pandas
+git+https://github.com/twopirllc/pandas-ta.git@development
 prophet
 textblob
 python-telegram-bot
