@@ -1,6 +1,15 @@
+name: Nifty 50 Scanner
+
+on:
+  schedule:
+    # Runs every 30 minutes during Indian Market Hours (Mon-Fri)
+    - cron: '*/30 3-10 * * 1-5' 
+  workflow_dispatch: # Allows you to run it manually for testing
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -13,13 +22,14 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          # Use the universal installer for pandas-ta
+          # Install pandas-ta first to establish the base
           pip install pandas-ta
-          # Install core requirements with version guards for 2026
+          # Install supporting libraries with version guards for 2026 stability
           pip install yfinance "pandas<3.0.0" "numpy<2.0.0" prophet textblob python-telegram-bot
 
       - name: Run Scanner
         env:
+          # These must match the names in your GitHub Secrets
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python scanner.py
