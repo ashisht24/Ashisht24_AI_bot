@@ -122,4 +122,5 @@ class GrandOracle:
         except: return None
 
 async def send_telegram_msg(message):
-    token =
+    token = os.getenv("TELEGRAM_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
