@@ -51,30 +51,43 @@ class GrandOracle:
         self.info = self.stock.info
 
     def get_news_data(self):
-        """Fetches sentiment and the actual headline title"""
+        """Specifically pulls headlines from article items only"""
         try:
             ticker_clean = self.ticker_symbol.split('.')[0]
             url = f"https://news.google.com/rss/search?q={ticker_clean}+stock+india&hl=en-IN&gl=IN&ceid=IN:en"
             headers = {'User-Agent': 'Mozilla/5.0'}
             req = urllib.request.Request(url, headers=headers)
+            
             with urllib.request.urlopen(req) as response:
                 content = response.read().decode('utf-8')
-                titles = re.findall("<title>(.*?)</title>", content)[1:6]
-            
-            if not titles: 
-                return 0.0, "No major news"
-            
-            def clean_title(t):
-                # Removes source name at the end (e.g. " - Economic Times")
-                return re.sub(r'\s+-\s+[^-]+$', '', t).strip()
+                
+                # Logic: Find each <item> block, then find the <title> inside it.
+                # This ignores the 'Google News' title at the top of the file.
+                items = re.findall(r'<item>(.*?)</item>', content, re.DOTALL)
+                
+                if not items:
+                    return 0.0, "No major news"
+                
+                headlines = []
+                for item in items[:5]: # Take top 5 news items
+                    title_match = re.search(r'<title>(.*?)</title>', item)
+                    if title_match:
+                        headlines.append(title_match.group(1))
+                
+                if not headlines:
+                    return 0.0, "No major news"
 
-            actual_headline = clean_title(titles[0])
-            sentiment = sum([TextBlob(t).sentiment.polarity for t in titles]) / len(titles)
-            
-            return sentiment, actual_headline
-        except:
+                def clean_title(t):
+                    # Strips the publisher name at the end (e.g., " - Economic Times")
+                    return re.sub(r'\s+-\s+[^-]+$', '', t).strip()
+
+                actual_headline = clean_title(headlines[0])
+                sentiment = sum([TextBlob(h).sentiment.polarity for h in headlines]) / len(headlines)
+                
+                return sentiment, actual_headline
+        except Exception as e:
+            print(f"News Error for {self.ticker_symbol}: {e}")
             return 0.0, "No major news"
-
     def analyze(self):
         try:
             df = self.df.copy()
