@@ -107,8 +107,8 @@ class GrandOracle:
 
             return {
                 "Ticker": self.ticker_symbol.replace(".NS",""), "CMP": round(ltp, 2), 
-                "Call": call, "Target": target, "SL": sl, "AI_View": "BULLISH" if ai_target > ltp else "BEARISH",
-                "News": news_label, "Headline": headline, "P/E": round(pe, 1)
+                "Call": call, "Target": target, "SL": sl, "AI_View": "Bullish" if ai_target > ltp else "Bearish",
+                "News": news_label, "Headline": headline
             }
         except: return None
 
@@ -118,7 +118,6 @@ async def send_telegram_msg(message):
     if token and chat_id:
         bot = telegram.Bot(token=token)
         async with bot:
-            # Using MarkdownV2 for strict code formatting
             await bot.send_message(text=message, chat_id=chat_id, parse_mode='Markdown')
 
 def run_scanner():
@@ -135,17 +134,36 @@ def run_scanner():
         final_df = pd.DataFrame(results)
         rank = {"★ BUY ★": 0, "HOLD": 1, "EXIT": 2}
         final_df['Sort'] = final_df['Call'].map(rank)
-        cols = ["Ticker", "CMP", "Call", "Target", "SL", "AI_View", "News", "P/E"]
+        sorted_results = final_df.sort_values('Sort').to_dict('records')
+
+        cards = []
+        for row in sorted_results:
+            # Build the card matching your image exactly
+            card = (
+                f"{row['Call']} | *{row['Ticker']}*\n"
+                f"💰 **CMP:** ₹{row['CMP']}\n"
+                f"🎯 **Target:** ₹{row['Target']}\n"
+            )
+            
+            # Use 'Take_Profit' label for EXIT calls as per your image
+            if row['Call'] == "EXIT":
+                card += f"💵 **Take_Profit:** ₹{row['CMP']} (Book Now!)\n"
+            else:
+                card += f"🛡️ **SL:** ₹{row['SL']}\n"
+
+            card += (
+                f"💡 **AI View:** {row['AI_View']}\n"
+                f"📢 **News:** {row['News']}\n"
+                f"📰 **Headline:** {row['Headline']}\n"
+            )
+            cards.append(card)
+
+        # Final footer with timestamp
+        footer = f"\nScan completed at {datetime.now().strftime('%H:%M:%S')} PM IST.\nNext scan in 30 minutes..."
+        full_message = "\n\n".join(cards) + footer
         
-        # 1. Create the terminal-style table string
-        table_output = final_df.sort_values('Sort')[cols].to_string(index=False)
-        
-        # 2. Wrap it in triple backticks for Telegram (Monospace)
-        header = f"📊 *LIVE PORTFOLIO ADVISOR* | {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-        full_msg = f"{header}\n```{table_output}```"
-        
-        asyncio.run(send_telegram_msg(full_msg))
-        print(table_output)
+        asyncio.run(send_telegram_msg(full_message))
+        print("Report sent to Telegram.")
     else:
         print("No significant trends detected.")
 
