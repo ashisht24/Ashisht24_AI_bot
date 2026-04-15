@@ -12,8 +12,8 @@ jobs:
     # This opts into Node 24 early to remove the deprecation warning
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      TELEGRAM_TOKEN: ${{ secrets.8680250643:AAHw2trtVMg9X5beNlcEaWjgwnFtIxw5F-Q }}
-      TELEGRAM_CHAT_ID: ${{ secrets.8618622359 }}
+      TELEGRAM_TOKEN: ${{ secrets.TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.CHAT_ID }}
 
     steps:
       - name: Checkout code
