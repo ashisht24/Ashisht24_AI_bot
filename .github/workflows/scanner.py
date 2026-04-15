@@ -167,5 +167,5 @@ if __name__ == "__main__":
     run_scanner()
     
     import os
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+TELEGRAM_TOKEN = os.getenv("8680250643:AAHw2trtVMg9X5beNlcEaWjgwnFtIxw5F-Q")
+CHAT_ID = os.getenv("8618622359")
