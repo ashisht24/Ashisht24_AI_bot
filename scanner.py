@@ -15,6 +15,18 @@ import logging
 import urllib.request
 import re
 
+import pandas as pd
+import numpy as np
+
+# --- 2026 COMPATIBILITY PATCH ---
+# This fixes the 'AttributeError' in technical analysis libraries
+try:
+    pd.Int64Index = pd.Index
+    pd.Float64Index = pd.Index
+except:
+    pass
+# --------------------------------
+
 # 1. Setup & Silencing Logs
 warnings.filterwarnings("ignore")
 logging.getLogger('prophet').setLevel(logging.ERROR)
