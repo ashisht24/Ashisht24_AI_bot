@@ -1,6 +1,6 @@
 yfinance
 pandas>=2.0.0
-pandas-ta>=0.3.14b0
+pandas-ta
 prophet
 textblob
 python-telegram-bot
