@@ -155,7 +155,19 @@ def is_market_open():
     return (datetime.now().weekday() < 5) and (dtime(9, 15) <= now <= dtime(15, 30))
 
 def run_scanner():
-    # ... your logic to get 'results' ...
+    # ADD THIS LINE RIGHT HERE at the start of the function:
+    results = [] 
+    
+    # ... your existing code that loops through tickers ...
+    # for ticker in tickers:
+    #     analysis = oracle.analyze(ticker)
+    #     if analysis:
+    #         results.append(analysis)
+
+    # Now when the code reaches line 160, 'results' will exist (even if it's empty)
+    if results:
+        message = "🚀 **Nifty 50 Analysis Report** 🚀\n\n"
+        # ... rest of your code ...
 
     if results:
         final_df = pd.DataFrame(results)
