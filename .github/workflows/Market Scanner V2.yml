@@ -1,4 +1,4 @@
-name: Nifty 50 Scanner
+name: Market Scanner V2
 
 on:
   schedule:
