@@ -2,7 +2,6 @@ name: Market Scanner V2
 
 on:
   schedule:
-    # Runs every 30 minutes during Indian Market Hours (Mon-Fri)
     - cron: '2,32 3-10 * * 1-5'
   workflow_dispatch: # Allows you to run it manually for testing
 
