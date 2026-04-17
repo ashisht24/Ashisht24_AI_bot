@@ -193,17 +193,3 @@ def run_scanner():
 if __name__ == "__main__":
     run_scanner()
 
-import schedule
-import time
-
-def run_my_bot():
-    print("Starting Market Scan...")
-    main() # This calls your existing scan logic
-
-# Schedule it for every 30 minutes
-schedule.every(30).minutes.do(run_my_bot)
-
-print("Bot is active and waiting for the next 30-minute mark...")
-while True:
-    schedule.run_pending()
-    time.sleep(1)
